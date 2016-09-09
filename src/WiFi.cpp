@@ -47,6 +47,16 @@ extern "C" {
 static void wifi_cb(uint8_t u8MsgType, void *pvMsg)
 {
 	switch (u8MsgType) {
+		case M2M_WIFI_RESP_DEFAULT_CONNECT:
+		{
+			tstrM2MDefaultConnResp *pstrDefaultConnResp = (tstrM2MDefaultConnResp *)pvMsg;
+			if (pstrDefaultConnResp->s8ErrorCode) {
+				Serial.println(pstrDefaultConnResp->s8ErrorCode);
+				WiFi._status = WL_DISCONNECTED;
+			}
+		}
+		break;
+
 		case M2M_WIFI_RESP_CON_STATE_CHANGED:
 		{
 			tstrM2mWifiStateChanged *pstrWifiState = (tstrM2mWifiStateChanged *)pvMsg;
@@ -133,7 +143,7 @@ static void wifi_cb(uint8_t u8MsgType, void *pvMsg)
 				m2m_wifi_connect((char *)pstrProvInfo->au8SSID, strlen((char *)pstrProvInfo->au8SSID),
 						pstrProvInfo->u8SecType, pstrProvInfo->au8Password, M2M_WIFI_CH_ALL);
 			} else {
-				WiFi._status = WL_CONNECT_FAILED;
+				WiFi._status = WL_PROVISIONING_FAILED;
 				//SERIAL_PORT_MONITOR.println("wifi_cb: Provision failed.\r\n");
 			}
 		}
@@ -173,6 +183,8 @@ static void wifi_cb(uint8_t u8MsgType, void *pvMsg)
 				}
 				WiFi._remoteMacAddress = 0;
 			}
+
+			strcpy((char *)WiFi._ssid, pstrConnInfo->acSSID);
 		}
 		break;
 
@@ -326,11 +338,17 @@ uint8_t WiFiClass::begin()
 			millis() - start < 60000) {
 		m2m_wifi_handle_events(NULL);
 	}
-	if (!(_status & WL_CONNECTED)) {
-		_mode = WL_RESET_MODE;
-	}
 
 	memset(_ssid, 0, M2M_MAX_SSID_LEN);
+
+	if (!(_status & WL_CONNECTED)) {
+		_mode = WL_RESET_MODE;
+	} else {
+		m2m_wifi_get_connection_info();
+
+		m2m_wifi_handle_events(NULL);
+	}
+
 	return _status;
 }
 
@@ -480,12 +498,12 @@ uint8_t WiFiClass::startAP(const char *ssid, uint8_t u8SecType, const void *pvAu
 	return _status;
 }
 
-uint8_t WiFiClass::beginProvision(char *ssid, char *url)
+uint8_t WiFiClass::beginProvision(const char *ssid, const char *url)
 {
 	return beginProvision(ssid, url, 1);
 }
 
-uint8_t WiFiClass::beginProvision(char *ssid, char *url, uint8_t channel)
+uint8_t WiFiClass::beginProvision(const char *ssid, const char *url, uint8_t channel)
 {
 	tstrM2MAPConfig strM2MAPConfig;
 
@@ -499,16 +517,16 @@ uint8_t WiFiClass::beginProvision(char *ssid, char *url, uint8_t channel)
 	strM2MAPConfig.u8ListenChannel = channel;
 	strM2MAPConfig.u8SecType = M2M_WIFI_SEC_OPEN;
 	strM2MAPConfig.u8SsidHide = SSID_MODE_VISIBLE;
-	strM2MAPConfig.au8DHCPServerIP[0] = 0xC0; /* 192 */
-	strM2MAPConfig.au8DHCPServerIP[1] = 0xA8; /* 168 */
-	strM2MAPConfig.au8DHCPServerIP[2] = 0x01; /* 1 */
-	strM2MAPConfig.au8DHCPServerIP[3] = 0x01; /* 1 */
+	strM2MAPConfig.au8DHCPServerIP[0] = 192;
+	strM2MAPConfig.au8DHCPServerIP[1] = 168;
+	strM2MAPConfig.au8DHCPServerIP[2] = 1;
+	strM2MAPConfig.au8DHCPServerIP[3] = 1;
 
-	if (m2m_wifi_start_provision_mode((tstrM2MAPConfig *)&strM2MAPConfig, url, 1) < 0) {
-		_status = WL_CONNECT_FAILED;
+	if (m2m_wifi_start_provision_mode((tstrM2MAPConfig *)&strM2MAPConfig, (char*)url, 1) < 0) {
+		_status = WL_PROVISIONING_FAILED;
 		return _status;
 	}
-	_status = WL_CONNECTED;
+	_status = WL_PROVISIONING;
 	_mode = WL_PROV_MODE;
 
 	memset(_ssid, 0, M2M_MAX_SSID_LEN);
@@ -526,6 +544,8 @@ uint8_t WiFiClass::beginProvision(char *ssid, char *url, uint8_t channel)
 
 uint32_t WiFiClass::provisioned()
 {
+	m2m_wifi_handle_events(NULL);
+
 	if (_mode == WL_STA_MODE) {
 		return 1;
 	}
