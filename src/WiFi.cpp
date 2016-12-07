@@ -51,7 +51,6 @@ static void wifi_cb(uint8_t u8MsgType, void *pvMsg)
 		{
 			tstrM2MDefaultConnResp *pstrDefaultConnResp = (tstrM2MDefaultConnResp *)pvMsg;
 			if (pstrDefaultConnResp->s8ErrorCode) {
-				Serial.println(pstrDefaultConnResp->s8ErrorCode);
 				WiFi._status = WL_DISCONNECTED;
 			}
 		}
@@ -271,6 +270,7 @@ int WiFiClass::init()
 	_gateway = 0;
 	_dhcp = 1;
 	_resolve = 0;
+	_remoteMacAddress = 0;
 	memset(_client, 0, sizeof(WiFiClient *) * TCP_SOCK_MAX);
 
 	// Initialize IO expander LED control (rev A then rev B)..
@@ -716,7 +716,11 @@ int32_t WiFiClass::RSSI()
 		m2m_wifi_handle_events(NULL);
 	}
 
-	return _resolve;
+	int32_t rssi = _resolve;
+
+	_resolve = 0;
+
+	return rssi;
 }
 
 int8_t WiFiClass::scanNetworks()
