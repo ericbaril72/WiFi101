@@ -1,21 +1,21 @@
 /*
   WiFi Web Server
 
- A simple web server that shows the value of the analog input pins.
- using a WiFi shield.
+  A simple web server that shows the value of the analog input pins.
+  using a WiFi shield.
 
- This example is written to configure the WiFi settings using provisioning mode.
+  This example is written to configure the WiFi settings using provisioning mode.
 
- Circuit:
- * WiFi shield attached
- * Analog inputs attached to pins A0 through A5 (optional)
+  Circuit:
+   WiFi shield attached
+   Analog inputs attached to pins A0 through A5 (optional)
 
- created 13 July 2010
- by dlf (Metodo2 srl)
- modified 31 May 2012
- by Tom Igoe
+  created 13 July 2010
+  by dlf (Metodo2 srl)
+  modified 31 May 2012
+  by Tom Igoe
 
- */
+*/
 
 #include <SPI.h>
 #include <WiFi101.h>
@@ -26,7 +26,7 @@ WiFiServer server(80);
 
 // SSID to use in provisioning mode
 //  - you must connect to this to configure the WiFi settings for your access point
-const char provisionSsid[] = "wifi101-provisioning"; 
+const char provisionSsid[] = "wifi101-provisioning";
 // Hostname to use for the provision mode
 //  - once connected to the SSID above, you need to visit http://wifi101.io to configure WiFi settings
 const char provisionHost[] = "wifi101.io";
@@ -45,36 +45,33 @@ void setup() {
     while (true);
   }
 
-  // attempt to connect with previously provisioned settings
-  Serial.println("Attempting to connect with provisioned settings");
-  if (WiFi.begin() == WL_CONNECTED) {
-    Serial.println("Successfuly connected with provisioned settings");
-  } else {
-    Serial.println("Failed to connect with provisioned settings!");
-    Serial.println();
-    Serial.println("Entering provisioning mode");
+  while (WiFi.status() != WL_CONNECTED) {
+    switch (WiFi.status()) {
+      case WL_IDLE_STATUS:
+      default:
+        // Try to connect to a previously provisioned access point
+        Serial.println("Attempting to connect with provisioned settings");
+        WiFi.begin();
+        break;
 
-    if (WiFi.beginProvision(provisionSsid, provisionHost) != WL_PROVISIONING) {
-      Serial.println("Entering provisioning mode failed!");
-      while (1); // do nothing
+      case WL_DISCONNECTED:
+        // WiFi.begin() failed, enter provision mode
+        Serial.println("Failed to connect with provisioned settings!");
+        Serial.println();
+        Serial.println("Entering provisioning mode");
+        WiFi.beginProvision(provisionSsid, provisionHost);
+
+        Serial.print("Please connect to SSID '");
+        Serial.print(provisionSsid);
+        Serial.print("' and then visit http://");
+        Serial.print(provisionHost);
+        Serial.println(" to configure WiFi settings");
+        break;
+
+      case WL_PROVISIONING:
+        // do nothing, we are waiting for someone to provision the settings
+        break;
     }
-
-    Serial.print("Please connect to SSID '");
-    Serial.print(provisionSsid);
-    Serial.print("' and then visit http://");
-    Serial.print(provisionHost);
-    Serial.println(" to configure WiFi settings");
-
-    // wait to exit provisioning mode
-    while (WiFi.status() == WL_PROVISIONING);
-
-    if (WiFi.status() != WL_CONNECTED) {
-      // provisioning failed
-      Serial.println("Provisioning failed!");
-      while (1); // do nothing
-    }
-
-    Serial.println("WiFi provisioned successfully!");
   }
 
   server.begin();
