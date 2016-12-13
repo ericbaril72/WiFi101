@@ -20,7 +20,7 @@
 #include <SPI.h>
 #include <WiFi101.h>
 
-int status = WL_IDLE_STATUS;
+const int ledPin = 6; // LED pin for connectivity status indicator
 
 WiFiServer server(80);
 
@@ -32,11 +32,8 @@ const char provisionSsid[] = "wifi101-provisioning";
 const char provisionHost[] = "wifi101.io";
 
 void setup() {
-  //Initialize serial and wait for port to open:
+  //Initialize serial:
   Serial.begin(9600);
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for native USB port only
-  }
 
   // check for the presence of the shield:
   if (WiFi.status() == WL_NO_SHIELD) {
@@ -44,6 +41,9 @@ void setup() {
     // don't continue:
     while (true);
   }
+
+  // configure the LED pin for output mode
+  pinMode(ledPin, OUTPUT);
 
   while (WiFi.status() != WL_CONNECTED) {
     switch (WiFi.status()) {
@@ -69,10 +69,17 @@ void setup() {
         break;
 
       case WL_PROVISIONING:
-        // do nothing, we are waiting for someone to provision the settings
+        // we are waiting for someone to provision the settings, blink the LED
+        digitalWrite(ledPin, HIGH);
+        delay(500);
+        digitalWrite(ledPin, LOW);
+        delay(500);
         break;
     }
   }
+
+  // connected, make the LED stay on
+  digitalWrite(ledPin, HIGH);
 
   server.begin();
   // you're connected now, so print out the status:
