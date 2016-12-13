@@ -542,6 +542,49 @@ uint8_t WiFiClass::beginProvision(const char *ssid, const char *url, uint8_t cha
 	return _status;
 }
 
+uint8_t WiFiClass::beginOrProvision(const char *provSsid, const char *provHost)
+{
+	return beginOrProvision(provSsid, provHost, 1);
+}
+
+uint8_t WiFiClass::beginOrProvision(const char *provSsid, const char *provHost, uint8_t channel)
+{
+	return beginOrProvision(provSsid, provHost, channel, NULL, NULL);
+}
+
+uint8_t WiFiClass::beginOrProvision(const char *provSsid, const char *provHost, void(*onProvisionEnter)(void), void(*onProvisioning)(void))
+{
+	return beginOrProvision(provSsid, provHost, 1, onProvisionEnter, onProvisioning);
+}
+
+uint8_t WiFiClass::beginOrProvision(const char *provSsid, const char *provHost, uint8_t channel, void(*onProvisionEnter)(void), void(*onProvisioning)(void))
+{
+	while (status() != WL_CONNECTED) {
+		switch (status()) {
+		case WL_IDLE_STATUS:
+		default:
+			WiFi.begin();
+			break;
+
+		case WL_DISCONNECTED:
+			WiFi.beginProvision(provSsid, provHost, channel);
+
+			if (onProvisionEnter) {
+				onProvisionEnter();
+			}
+			break;
+
+		case WL_PROVISIONING:
+			if (onProvisioning) {
+				onProvisioning();
+			}
+			break;
+		}
+	}
+
+	return status();
+}
+
 uint32_t WiFiClass::provisioned()
 {
 	m2m_wifi_handle_events(NULL);
