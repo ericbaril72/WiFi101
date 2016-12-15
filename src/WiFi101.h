@@ -44,7 +44,9 @@ typedef enum {
 	WL_DISCONNECTED,
 	WL_AP_LISTENING,
 	WL_AP_CONNECTED,
-	WL_AP_FAILED
+	WL_AP_FAILED,
+	WL_PROVISIONING,
+	WL_PROVISIONING_FAILED
 } wl_status_t;
 
 /* Encryption modes */
@@ -119,8 +121,13 @@ public:
 	uint8_t beginAP(const char *ssid, uint8_t key_idx, const char* key);
 	uint8_t beginAP(const char *ssid, uint8_t key_idx, const char* key, uint8_t channel);
 
-	uint8_t beginProvision(char *ssid, char *url);
-	uint8_t beginProvision(char *ssid, char *url, uint8_t channel);
+	uint8_t beginProvision(const char *ssid, const char *url);
+	uint8_t beginProvision(const char *ssid, const char *url, uint8_t channel);
+
+	uint8_t beginOrProvision(const char *provSsid, const char *provHost);
+	uint8_t beginOrProvision(const char *provSsid, const char *provHost, uint8_t channel);
+	uint8_t beginOrProvision(const char *provSsid, const char *provHost, void(*onProvisionEnter)(void), void(*onProvisioning)(void));
+	uint8_t beginOrProvision(const char *provSsid, const char *provHost,  uint8_t channel, void(*onProvisionEnter)(void), void(*onProvisioning)(void));
 
 	uint32_t provisioned();
 
